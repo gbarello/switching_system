@@ -1,0 +1,5 @@
+I want to construct a network that takes time-series input, feeds it through a time-independent CNN, and predicts future input based on a linear system, with a hidden time-dependent state.
+
+There will be N distinct linear systems which are switched between based on the output of an additional network which receives the hidden state as input.
+
+I will regularize the system by maximizing the mutual information of the CNN output and dynamical state variables.
