@@ -15,8 +15,8 @@ def build_sys_picker(n_sys, encoding, enc_pred, sys_prob,layers,systype):
     
     #concatenate along the appropriate dimension
 #    net = tf.concat([encoding],axis = 1)
-    net = tf.concat([encoding,encoding - enc_pred,sys_prob],axis = 1)
-#    net = tf.concat([encoding],axis = 1)
+#    net = tf.concat([encoding,encoding - enc_pred,sys_prob],axis = 1)
+    net = tf.concat([encoding],axis = 1)
 
 
     for k in range(len(layers)):

@@ -3,6 +3,14 @@ from MINE import MINE_net as MINE
 
 eps = .000001
 
+
+def trainable(scope = "",match = True):
+    a = tf.trainable_variables()
+    if match:
+        return [x for x in a if x.name[:len(scope)] == scope]
+    else:
+        return [x for x in a if x.name[:len(scope)] != scope]
+
 def renorm(x,axis):
     return x / tf.reduce_sum(x,axis = axis,keepdims = True)
 
@@ -16,7 +24,18 @@ def MINE_loss(enc,sysprob):
 #    var2 = tf.concat([enc,sysprob],axis = 2)[:,1:]
     var2 = enc[:,1:]
     
-    return -MINE.get_MINE(var1,var2,flatten_time_axis = True,noise_1 = .01,noise_2 = .01)
+    return -MINE.get_MINE(var1,var2,flatten_time_axis = True,noise_1 = .05,noise_2 = .05)
+
+def MINE_grad_regularization(enc):
+    var1 = enc[:,:-1]
+    var2 = enc[:,1:]
+    
+    raw,inplace = MINE.get_MINE_grad_vars(var1,var2,flatten_time_axis = True,noise_1 = .01,noise_2 = .01,getrawout = True,reuse= True)
+
+    grads = tf.gradients(raw,inplace)
+
+    return tf.reduce_sum([g**2 for g in grads])
+    
 
 def likelihood_loss(enc,pred,prob):
     return -tf.reduce_mean(tf.log(tf.reduce_sum(tf.expand_dims(prob[:,:-1],-1)*tf.exp(-((tf.expand_dims(enc[:,1:],axis = 2) - pred[:,:-1]))**2),axis = 2)))

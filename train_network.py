@@ -1,7 +1,10 @@
 import argparse
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--learnpic",action = "store_true",default = False)
+parser.add_argument("--ent_loss",action = "store_true",default = False)
+parser.add_argument("--MINE_grad_reg",default = 0,type=float)
+parser.add_argument("--likloss",default = 1,type=float)
+parser.add_argument("--regloss",default = 1,type=float)
 parser.add_argument("--device",default = "0",type = str)
 parser.add_argument("--dataset",default = "nascar",type = str)
 parser.add_argument("--epochs",default = 5000,type = int)
@@ -90,11 +93,19 @@ def train_network(args):
 
     meanediff = tf.reduce_mean((enc[:,:-1] - enc[:,1:])**2)
     prederr = tf.reduce_mean(tf.expand_dims(prob[:,:-1],-1)*(tf.expand_dims(enc[:,1:],2) - pred[:,:-1])**2)
+
+    pererr = tf.reduce_mean(tf.expand_dims(prob[:,:-1],-1)*((tf.expand_dims(enc[:,1:],2) - pred[:,:-1])**2))/tf.reduce_mean(tf.expand_dims((enc[:,:-1] - enc[:,1:]),2)**2)
     
     scalereg = tf.reduce_mean(tf.reduce_sum(enc**2,2))
 
-    loss = 2*rms
-    reg = (mine + scalereg + varreg + minereg + otherreg)
+    loss = args["likloss"]*rms
+    reg = args["regloss"]*(mine + scalereg + varreg + minereg + otherreg)
+
+    reg += args["ent_loss"]*post_ent
+
+    minegradreg = losses.MINE_grad_regularization(enc)
+        
+    reg += args["MINE_grad_reg"]*minegradreg
     
     ########
 
@@ -120,7 +131,7 @@ def train_network(args):
 
     test = [sess.run([te_dat,te_lab]) for k in range(3)]
 
-    LOG = log.log(direc + "/logfile.log",name = "epoch,encdiff,prederr,prior_entropy,encmean,mine")
+    LOG = log.log(["epoch","percenterr","prior_entropy","encmean","mine"],PRINT = True)
     
     dat,lab = sess.run([tr_dat,tr_lab])
 
@@ -128,37 +139,41 @@ def train_network(args):
         dat,lab = sess.run([tr_dat,tr_lab])#get data batch
         
         if train_mode == "full":
-            tr,pe = sess.run([fulltrain,pre_ent],{input_tensor:dat})
-            
+            tr,pe = sess.run([fulltrain,pre_ent],{input_tensor:dat})            
         elif train_mode == "minefirst":
             if k < args["epochs"]/2: 
                 tr,pe = sess.run([minetrain,pre_ent],{input_tensor:dat})
             else:
                 tr,pe = sess.run([systtrain,pre_ent],{input_tensor:dat})
-                
+        elif train_mode == "mineonly":
+            tr,pe = sess.run([minetrain,pre_ent],{input_tensor:dat})
+        else:
+            print("Training mode not recognized")
+            exit()
+            
         if k%50 == 0:
             teloss = 0
             tmean = 0
             mineloss = 0
-            rms_error = 0
+            per_error = 0
             
             for t in range(len(test)):
                 dat,lab = test[t]
                 
-                l,e,m,r = sess.run([meanediff,enc,mine,prederr],{input_tensor:dat})
+                l,e,m,r = sess.run([meanediff,enc,mine,pererr],{input_tensor:dat})
                 teloss += l
                 tmean += np.max(e**2)
                 mineloss += m
-                rms_error += r
+                per_error += r
                 
             teloss /= len(test)
             tmean /= len(test)
             mineloss /= len(test)
-            rms_error /= len(test)
+            per_error /= len(test)
             
-            LOG.log("{}\t{}\t{}\t{}\t{}\t{}".format(k,teloss,rms_error,pe,tmean,mineloss))
+            LOG.log([k,per_error,pe,tmean,mineloss])
 
-
+    LOG.save(direc + "/logfile.json")
     ###make test data
     lab = []
     dat = []
@@ -186,7 +201,7 @@ def train_network(args):
         
     sys,O = sess.run([syst,off])
 
-    sysdense = sess.run(trainable("syspick"))
+    sysdense = sess.run(trainable("syspick_dense"))
 
     for s in range(len(sysdense)):
         np.savetxt(direc+"/nascar_syspick_{}.csv".format(s),sysdense[s])

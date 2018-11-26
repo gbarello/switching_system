@@ -1,3 +1,4 @@
+outputs/
 *.csv
 .ipynb_checkpoints
 *#

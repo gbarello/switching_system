@@ -7,7 +7,7 @@ import numpy as np
 def softmax(x):
     return np.exp(x)/np.sum(np.exp(x))
 
-def build_network(data,n_enc,n_sys,no_encoding,syspicktype):
+def build_network(data,n_enc,n_sys,no_encoding,syspicktype,syslayers = []):
 
     ##build system variables
     systems = tf.get_variable("systems",initializer=np.float32(np.random.normal(0,.001,[n_sys,n_enc,n_enc])))
@@ -26,7 +26,7 @@ def build_network(data,n_enc,n_sys,no_encoding,syspicktype):
         enc = encoder.build_encoder(data[:,k],n_enc,no_encoding = no_encoding)
         prediction = pred.build_prediction(enc,systems,offsets)
         infer = pred.build_inference(enc,systems,offsets,prob)
-        prob = sys.build_sys_picker(n_sys,enc,infer,prob,[],syspicktype)
+        prob = sys.build_sys_picker(n_sys,enc,infer,prob,syslayers,syspicktype)
             
         enc_out.append(enc)
         prob_out.append(prob)
@@ -38,7 +38,7 @@ def build_network(data,n_enc,n_sys,no_encoding,syspicktype):
 
     return enc_out,prob_out,pred_out,systems,offsets,init_probs
 
-def build_test_network(data,n_enc,n_sys,no_encoding,syspicktype):
+def build_test_network(data,n_enc,n_sys,no_encoding,syspicktype,syslayers = []):
 
     with tf.variable_scope("",reuse = True):
     
@@ -57,7 +57,7 @@ def build_test_network(data,n_enc,n_sys,no_encoding,syspicktype):
             enc = encoder.build_encoder(data[:,k],n_enc,no_encoding = no_encoding)
             prediction = pred.build_prediction(enc,systems,offsets)
             infer = pred.build_inference(enc,systems,offsets)
-            prob = sys.build_sys_picker(n_sys,enc,infer,prob,[],syspicktype)
+            prob = sys.build_sys_picker(n_sys,enc,infer,prob,syslayers,syspicktype)
             
             enc_out.append(enc)
             prob_out.append(prob)

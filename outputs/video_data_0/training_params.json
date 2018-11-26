@@ -1,1 +1,0 @@
-{"nenc": 10, "tag": "video_data", "ntestbatch": 100, "nstate": 10, "batchsize": 8, "dataset": "nascar", "syspick": "logistic", "device": "0", "seed": 0, "learnpic": false, "train_mode": "full", "epochs": 5000}
